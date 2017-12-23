@@ -8,8 +8,9 @@ BASE_URL = "https://bittrex.com/api/"
 GET_MARKETS = "/public/getmarkets"
 GET_MARKETS_SUMMARIES = "/public/getmarketsummaries"
 GET_PRICES = "/pub/market/GetTicks?marketName="
+GET_MARKET = "/public/getmarketsummary?market="
 
-FREQUENCIES_DICT =  {Frequency.hour: "hour", Frequency.min :"onemin", Frequency.tenmin : "tenmin", Frequency.day:"day"}
+FREQUENCIES_DICT =  {Frequency.hour: "hour", Frequency.min :"onemin", Frequency.thirtymin : "thirtymin", Frequency.day:"day", Frequency.fivemin:"fivemin"}
 
 class BittrexExchange:
 
@@ -39,6 +40,32 @@ class BittrexExchange:
             retVal[pairName] = ExchangePairMarketData(pair, marketsDict[pairName][1],
                                                       marketsDict[pairName][2], marketsDict[pairName][3])
         return retVal
+
+    def GetMarketSnapshot(self, currencyPair):
+        if (currencyPair in self.Markets):
+            url = BASE_URL + self.ApiVersion +GET_MARKET + str(currencyPair)
+            response = urllib.request.urlopen(url)
+            data = json.loads(response.read().decode(response.info().get_param('charset') or 'utf-8'))
+            processedData = self.__processMarketSnapshotRequest(data, self.Markets[currencyPair], False)
+            return processedData
+        elif currencyPair.GetReversePair() in self.Markets:
+            url = BASE_URL + self.ApiVersion + GET_MARKET + str(currencyPair.GetReversePair())
+            response = urllib.request.urlopen(url)
+            data = json.loads(response.read().decode(response.info().get_param('charset') or 'utf-8'))
+            processedData = self.__processMarketSnapshotRequest(data,self.Markets[currencyPair], True)
+            return processedData
+
+    def __processMarketSnapshotRequest(self, data, exchangePair, isReverse):
+        sucess = data['success']
+        if sucess:
+            result = data['result'][0]
+            if not isReverse:
+                exchangePairMarketData = ExchangePairMarketData(exchangePair,result['Last'], result['Bid'], result['Ask'])
+            else:
+                exchangePairMarketData = ExchangePairMarketData(exchangePair, 1.0/result['Last'], 1.0/result['Ask'], 1.0/result['Bid'])
+            return exchangePairMarketData
+        else:
+            return "Invalid answer"
 
     def GetCurrencyPairTimeSerie(self, currencyPair, frequency):
         ticker = currencyPair.BaseCurrency +"-"+currencyPair.MarketCurrency

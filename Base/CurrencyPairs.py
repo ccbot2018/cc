@@ -14,7 +14,7 @@ class ExchangePair:
 
 
 class ExchangePairMarketData:
-    def __init__(self, exchangePair, last, bid, ask,):
+    def __init__(self, exchangePair, last, bid, ask):
         self.CurrencyPair = exchangePair.CurrencyPair
         self.MinTradeSize = exchangePair.MinTradeSize
         self.Bid = bid
@@ -24,6 +24,9 @@ class ExchangePairMarketData:
 
     def __str__(self):
         return str(self.CurrencyPair)
+
+    def ToString(self):
+        return ",".join([str(self.MinTradeSize), str(self.Ask), str(self.Bid), str(self.Last), str(self.Mid)])
 
 class CurrencyPair:
     def __init__(self, *args):

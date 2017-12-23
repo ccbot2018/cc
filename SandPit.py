@@ -21,18 +21,34 @@ def TriangularArbitrage():
         c = dt.datetime.now()
         print(str(a) +"  " + str((b-a).microseconds/1000) + "   " + str((c-b).microseconds/1000))
 
-def CacheTest():
+def RefreshCache():
     bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT")
     currentDir = os.path.abspath(os.path.dirname(__file__))
     cacheFolder = os.path.join(currentDir, "Cache")
-    dataProvider = DataProvider(bittrex, cacheFolder)
-    startDate = dt.datetime(2017,10,28)
-    endDate = dt.datetime(2017,11,30)
+
     marketPairs = bittrex.RetrieveMarkets()
-    t= dataProvider.GetPairTimeSerie(CurrencyPair("BTC-ETH"),Frequency.hour, startDate, endDate)
-    dataProvider.RefreshCache(marketPairs, Frequency.min)
+    dataProvider = DataProvider(bittrex, marketPairs)
+    dataProvider.RefreshCache(Frequency.fivemin)
+    dataProvider.RefreshCache(Frequency.thirtymin)
+    dataProvider.RefreshCache(Frequency.hour)
+    dataProvider.RefreshCache(Frequency.min)
+
+def CacheSnapshotTest():
+    bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT")
+    currentDir = os.path.abspath(os.path.dirname(__file__))
+    cacheFolder = os.path.join(currentDir, "Cache")
+
+    marketPairs = bittrex.RetrieveMarkets()
+    btcMarkets = list(filter(lambda t: t.BaseCurrency =="BTC" or t.MarketCurrency == "BTC",marketPairs.keys()))
+    marketPairsFiltered = {key: marketPairs[key] for key in btcMarkets}
+    dataProvider = DataProvider(bittrex, cacheFolder, [Frequency.min],marketPairsFiltered)
+    dataProvider.LoadCachedClose()
+    t = dataProvider.GetSnapshotDataAllMarkets(True)
     b=2
 
 
+
+
+
 if __name__ == "__main__":
-    CacheTest()
+    CacheSnapshotTest()
