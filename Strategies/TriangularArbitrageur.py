@@ -1,5 +1,5 @@
 import itertools as it
-from Base.CurrencyPairs import CurrencyPair, BuySell
+from Core.CurrencyPairs import CurrencyPair, BuySell
 
 class TriangularArbitrageur:
     def __init__(self, exchangeData, fees):

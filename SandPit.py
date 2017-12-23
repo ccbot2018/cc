@@ -3,8 +3,8 @@
 from Exchange.BittrexExchange import BittrexExchange
 from Strategies.TriangularArbitrageur import TriangularArbitrageur
 from DataProvider import DataProvider
-from Base.ExchangeData import Frequency
-from Base.CurrencyPairs import CurrencyPair
+from Core.ExchangeData import Frequency
+from Core.CurrencyPairs import CurrencyPair
 
 import datetime as dt
 import os.path

@@ -3,7 +3,7 @@ import pandas as pd
 import datetime as dt
 import numpy as np
 
-from Base.ExchangeData import Frequency
+from Core.ExchangeData import Frequency
 
 class DataProvider:
     def __init__(self, exchange, cacheFolder, frequencyList, pairsDict):
