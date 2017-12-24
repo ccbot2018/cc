@@ -1,0 +1,3 @@
+
+
+def ScatterPlotReturnsExcessReturn(dataProvider, )
