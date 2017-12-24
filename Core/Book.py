@@ -11,7 +11,8 @@ class ExchangeBook:
         if sellCurrency in self.Balance and self.Balance[sellCurrency]>= quantitySellCurrency:
             self.Balance[sellCurrency] -= quantitySellCurrency
             buyCcyPrice = dataProvider.GetCurrentClose(buyCurrency)
-            qtyBuyCurrency = (quantitySellCurrency / (buyCcyPrice*(1.0+self.BidAskSpread)))*(1.0-self.Fees)
+            sellCcyPrice = dataProvider.GetCurrentClose(sellCurrency)
+            qtyBuyCurrency = (quantitySellCurrency *sellCcyPrice / (buyCcyPrice*(1.0+self.BidAskSpread)))*(1.0-self.Fees)
             if buyCurrency in self.Balance:
                 self.Balance[buyCurrency] += qtyBuyCurrency
             else:

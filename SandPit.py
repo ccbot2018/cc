@@ -5,6 +5,7 @@ from Strategies.TriangularArbitrageur import TriangularArbitrageur
 from Core.DataProvider import DataProvider
 from Core.ExchangeData import Frequency
 from Strategies.BuyAndHold import BuyAndHold
+from Strategies.BuyBasketAndHold import BuyBasketAndHold
 from Core.BackTestingMonoExchange import BackTestingMonoExchange
 
 import datetime as dt
@@ -50,7 +51,7 @@ def CacheSnapshotTest():
 def SimpleStrategyBacktesting():
     startDate = dt.datetime(2017,12,12)
     endDate = dt.datetime(2017, 12, 22)
-    strategy = BuyAndHold("BTC")
+    strategy = BuyBasketAndHold(["ADA", "ETH", "BTC"])
     bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT")
     currentDir = os.path.abspath(os.path.dirname(__file__))
     cacheFolder = os.path.join(currentDir, "Cache")
