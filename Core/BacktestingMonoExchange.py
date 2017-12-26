@@ -1,6 +1,7 @@
 import datetime as dt
+import pandas as pd
 from Core.ExchangeData import Frequency
-from Core.Book import ExchangeBook
+from Core.BacktestingExchangeBook import BacktestingExchangeBook
 
 FREQUENCIES_DICT = {Frequency.min : dt.timedelta(0,60),
                         Frequency.fivemin : dt.timedelta(0,360),
@@ -21,22 +22,20 @@ class BackTestingMonoExchange:
         self.Fees = fees
         self.BidAskSpread = bidAskSpread
 
-
     def SetUp(self):
-        book = ExchangeBook({"USDT":1000}, self.Fees, self.BidAskSpread)
+        book = BacktestingExchangeBook({"USDT":1000}, self.Fees, self.BidAskSpread)
         self.Strategy.Book = book
         self.Strategy.DataProvider = self.DataProvider
 
-
     def Start(self):
         tempDate = self.StartDate
-        mtm = list()
+        mtm = dict()
         while tempDate < self.EndDate:
             print (tempDate)
             updatedUniverse = self.DataUniverse.loc[
                 self.DataUniverse.index < tempDate]
             self.Strategy.DataProvider.CloseDataStorage = updatedUniverse
-            mtm.append(self.Strategy.Update())
+            mtm[tempDate] = self.Strategy.Update()
             tempDate = tempDate + FREQUENCIES_DICT[self.Frequency]
-        return mtm
+        return pd.DataFrame.from_dict(mtm, orient= 'index')
 

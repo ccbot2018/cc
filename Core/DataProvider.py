@@ -17,18 +17,22 @@ class DataProvider:
         self.DisableCalls = False
         self.RefCurrency = refCurrency
         self.ToRefCcy = self.__toRefCurrencyDict()
+        self.IsLoaded = False
 
-    def RefreshCache(self, frequency):
+    def RefreshCache(self):
         for pair, pairValue in self.Markets.items():
-            self.RefreshPairTimeSerie(pair, frequency)
+            self.RefreshPairTimeSerie(pair )
 
     def LoadCachedClose(self):
+        if self.IsLoaded:
+            return
         for pair, pairValue in self.Markets.items():
             data =self.__getCachedPairData(pair, self.Frequency)
             self.CloseDataStorage[str(pair)] = data['Close']
         self.CloseDataStorage =  self.CloseDataStorage.fillna(method='ffill')
         self.CloseDataStorage = self.CloseDataStorage.fillna(method='bfill')
         self.__rebaseToRefCcy()
+        self.IsLoaded = True
 
     def GetTimeSerieClose(self, currency):
         if not self.DisableCalls:
@@ -40,10 +44,10 @@ class DataProvider:
             self.GetSnapshotDataAllMarkets()
         return self.CloseDataStorage[currency].tail(1)[0]
 
-    def RefreshPairTimeSerie(self, currencyPair, frequency):
-        print("Refreshing " + str(currencyPair) + " " + str(frequency))
-        fileName = self.__pairCacheFileName(currencyPair, frequency)
-        exchangeData_df = self.Exchange.GetCurrencyPairTimeSerie(currencyPair, frequency)
+    def RefreshPairTimeSerie(self, currencyPair):
+        print("Refreshing " + str(currencyPair) + " " + str(self.Frequency))
+        fileName = self.__pairCacheFileName(currencyPair, self.Frequency)
+        exchangeData_df = self.Exchange.GetCurrencyPairTimeSerie(currencyPair, self.Frequency)
         cacheData_df = pd.DataFrame()
         if os.path.isfile(fileName):
             cacheData_df = pd.read_csv(fileName, index_col= 0,

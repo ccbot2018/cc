@@ -80,6 +80,7 @@ class BittrexExchange:
     def __processTimeSerieData(self, data):
         sucess = data['success']
         if sucess:
+            print (sucess)
             processedData_df = pd.DataFrame(data['result'])
             processedData_df = processedData_df.rename({'O':'Open', 'H':'High','L':'Low','C':'Close','V':'Volume','BV':'BaseVolume'}, axis='columns')
             processedData_df = processedData_df.set_index('T')

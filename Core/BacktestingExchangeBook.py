@@ -1,6 +1,6 @@
 from Core.CurrencyPairs import CurrencyPair
 
-class ExchangeBook:
+class BacktestingExchangeBook:
     def __init__(self, initialBalance, fees, bidAskSpread):
         self.Balance = initialBalance
         self.Orders = list()
