@@ -3,10 +3,11 @@
 from Exchange.BittrexExchange import BittrexExchange
 from Strategies.TriangularArbitrageur import TriangularArbitrageur
 from Core.DataProvider import DataProvider
-from Core.ExchangeData import Frequency
+from Core.Frequency import Frequency
 from Strategies.BuyAndHold import BuyAndHold
 from Strategies.BuyBasketAndHold import BuyBasketAndHold
 from Core.BacktestingMonoExchange import BackTestingMonoExchange
+from Analytics.ReturnsAnalysis import ScatterPlotReturnsExcessReturn
 
 import datetime as dt
 import os.path
@@ -30,15 +31,15 @@ def RefreshCache():
     cacheFolder = os.path.join(currentDir, "Cache")
 
     marketPairs = bittrex.RetrieveMarkets()
-    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.min, marketPairs, "USDT")
-    #dataProvider.RefreshCache()
-    dataProvider1 = DataProvider(bittrex, cacheFolder, Frequency.fivemin, marketPairs, "USDT")
+    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.min, marketPairs)
+    dataProvider.RefreshCache()
+    dataProvider1 = DataProvider(bittrex, cacheFolder, Frequency.fivemin, marketPairs)
     dataProvider1.RefreshCache()
-    dataProvider2 = DataProvider(bittrex, cacheFolder, Frequency.thirtymin, marketPairs, "USDT")
+    dataProvider2 = DataProvider(bittrex, cacheFolder, Frequency.thirtymin, marketPairs)
     dataProvider2.RefreshCache()
-    dataProvider3 = DataProvider(bittrex, cacheFolder, Frequency.hour, marketPairs, "USDT")
+    dataProvider3 = DataProvider(bittrex, cacheFolder, Frequency.hour, marketPairs)
     dataProvider3.RefreshCache()
-    dataProvider4 = DataProvider(bittrex, cacheFolder, Frequency.day, marketPairs, "USDT")
+    dataProvider4 = DataProvider(bittrex, cacheFolder, Frequency.day, marketPairs)
     dataProvider4.RefreshCache()
 
 def CacheSnapshotTest():
@@ -49,7 +50,7 @@ def CacheSnapshotTest():
     marketPairs = bittrex.RetrieveMarkets()
     btcMarkets = list(filter(lambda t: t.BaseCurrency =="BTC" or t.MarketCurrency == "BTC",marketPairs.keys()))
     marketPairsFiltered = {key: marketPairs[key] for key in btcMarkets}
-    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.min,marketPairsFiltered, "USDT")
+    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.min,marketPairsFiltered)
     dataProvider.LoadCachedClose()
     t = dataProvider.GetSnapshotDataAllMarkets()
     b=2
@@ -65,7 +66,7 @@ def SimpleStrategyBacktesting():
     marketPairs = bittrex.RetrieveMarkets()
     btcMarkets = list(filter(lambda t: t.BaseCurrency == "BTC" or t.MarketCurrency == "BTC", marketPairs.keys()))
     marketPairsFiltered = {key: marketPairs[key] for key in btcMarkets}
-    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.thirtymin, marketPairsFiltered, "USDT")
+    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.thirtymin, marketPairsFiltered)
     bc = BackTestingMonoExchange(startDate, endDate, Frequency.thirtymin, strategy,dataProvider, 0.0025, 0.01)
     bc.SetUp()
     mtm = bc.Start()
@@ -79,7 +80,17 @@ def SimpleStrategyBacktesting():
     with open(cacheFolder + "\\result1.csv", 'w') as f:
         mtm.to_csv(f, header= False)
 
+def ReturnsAnalysis():
+    bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT")
+    currentDir = os.path.abspath(os.path.dirname(__file__))
+    cacheFolder = os.path.join(currentDir, "Cache")
+    marketPairs = bittrex.RetrieveMarkets()
+    btcMarkets = list(filter(lambda t: t.BaseCurrency == "BTC" or t.MarketCurrency == "BTC", marketPairs.keys()))
+    marketPairsFiltered = {key: marketPairs[key] for key in btcMarkets}
+    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.min, marketPairsFiltered)
+    ScatterPlotReturnsExcessReturn(dataProvider,10,50)
+
 
 
 if __name__ == "__main__":
-    SimpleStrategyBacktesting()
+    RefreshCache()

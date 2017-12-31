@@ -7,7 +7,7 @@ class BuyBasketAndHold:
         self.State = "NoPosition"
         self.CurrencyList = currencyList
 
-    def Update(self):
+    def Update(self, date):
         if self.State == "NoPosition":
             balance = self.Book.GetBalance()
             nBuyCurrency = len(self.CurrencyList)

@@ -1,7 +1,7 @@
 import urllib.request
 import json
 import pandas as pd
-from Core.ExchangeData import Frequency
+from Core.Frequency import Frequency
 from Core.CurrencyPairs import ExchangePair, ExchangePairMarketData, CurrencyPair
 
 BASE_URL = "https://bittrex.com/api/"

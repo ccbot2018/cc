@@ -3,11 +3,11 @@ import pandas as pd
 import datetime as dt
 import numpy as np
 
-from Core.ExchangeData import Frequency
+from Core.Frequency import Frequency
 from Core.CurrencyPairs import CurrencyPair
 
 class DataProvider:
-    def __init__(self, exchange, cacheFolder, frequency, pairsDict, refCurrency):
+    def __init__(self, exchange, cacheFolder, frequency, pairsDict):
         self.Exchange = exchange
         self.ExchangeName = exchange.Name
         self.CacheFolder = cacheFolder
@@ -15,7 +15,7 @@ class DataProvider:
         self.Markets = pairsDict
         self.CloseDataStorage = pd.DataFrame()
         self.DisableCalls = False
-        self.RefCurrency = refCurrency
+        self.RefCurrency = exchange.RefCurrency
         self.ToRefCcy = self.__toRefCurrencyDict()
         self.IsLoaded = False
 
@@ -43,6 +43,9 @@ class DataProvider:
         if not self.DisableCalls:
             self.GetSnapshotDataAllMarkets()
         return self.CloseDataStorage[currency].tail(1)[0]
+
+    def GetTime(self):
+        return self.CloseDataStorage.index[-1]
 
     def RefreshPairTimeSerie(self, currencyPair):
         print("Refreshing " + str(currencyPair) + " " + str(self.Frequency))

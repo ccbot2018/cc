@@ -7,7 +7,7 @@ class BuyAndHold:
         self.State = "NoPosition"
         self.Currency = currency
 
-    def Update(self):
+    def Update(self, date):
         if self.State == "NoPosition":
             balance = self.Book.GetBalance()
             for ccy, qty in balance.items():
