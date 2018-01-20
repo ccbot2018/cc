@@ -31,16 +31,16 @@ def RefreshCache():
     cacheFolder = os.path.join(currentDir, "Cache")
 
     marketPairs = bittrex.RetrieveMarkets()
-    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.min, marketPairs)
+    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.min, marketPairs, "BTC")
     dataProvider.RefreshCache()
-    dataProvider1 = DataProvider(bittrex, cacheFolder, Frequency.fivemin, marketPairs)
+    dataProvider1 = DataProvider(bittrex, cacheFolder, Frequency.fivemin, marketPairs, "BTC")
     dataProvider1.RefreshCache()
-    dataProvider2 = DataProvider(bittrex, cacheFolder, Frequency.thirtymin, marketPairs)
+    dataProvider2 = DataProvider(bittrex, cacheFolder, Frequency.thirtymin, marketPairs, "BTC")
     dataProvider2.RefreshCache()
-    dataProvider3 = DataProvider(bittrex, cacheFolder, Frequency.hour, marketPairs)
+    dataProvider3 = DataProvider(bittrex, cacheFolder, Frequency.hour, marketPairs, "BTC")
     dataProvider3.RefreshCache()
-    dataProvider4 = DataProvider(bittrex, cacheFolder, Frequency.day, marketPairs)
-    dataProvider4.RefreshCache()
+    dataProvider4 = DataProvider(bittrex, cacheFolder, Frequency.day, marketPairs, "BTC")
+    #dataProvider4.RefreshCache()
 
 def CacheSnapshotTest():
     bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT")
@@ -63,10 +63,8 @@ def SimpleStrategyBacktesting():
     bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT")
     currentDir = os.path.abspath(os.path.dirname(__file__))
     cacheFolder = os.path.join(currentDir, "Cache")
-    marketPairs = bittrex.RetrieveMarkets()
-    btcMarkets = list(filter(lambda t: t.BaseCurrency == "BTC" or t.MarketCurrency == "BTC", marketPairs.keys()))
-    marketPairsFiltered = {key: marketPairs[key] for key in btcMarkets}
-    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.thirtymin, marketPairsFiltered)
+    marketPairs = bittrex.Markets
+    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.thirtymin, marketPairs, "BTC")
     bc = BackTestingMonoExchange(startDate, endDate, Frequency.thirtymin, strategy,dataProvider, 0.0025, 0.01)
     bc.SetUp()
     mtm = bc.Start()
@@ -93,4 +91,4 @@ def ReturnsAnalysis():
 
 
 if __name__ == "__main__":
-    RefreshCache()
+    SimpleStrategyBacktesting()

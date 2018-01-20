@@ -20,13 +20,16 @@ class BuyBasketAndHold:
             return self.Book.ComputeMtM(self.DataProvider)
 
     def MultipleBuys(self, sellCcy, qty, buyCcy):
-        orders = self.DataProvider.ToRefCcy[buyCcy]
-        for order in reversed(orders):
-            if (order is "Identity"):
-                continue
-            self.Book.Buy(sellCcy, qty, order[1].MarketCurrency,self.DataProvider)
-            qty = self.Book.GetBalance()[order[1].MarketCurrency]
-            sellCcy = order[1].MarketCurrency
+        currencyPair = CurrencyPair(sellCcy, buyCcy)
+        orders = self.DataProvider.AllPossibleTransfers[currencyPair]
+        for order in orders:
+            if order[0] == "Long":
+                self.Book.Buy(order[1].BaseCurrency, qty, order[1].MarketCurrency,self.DataProvider)
+                qty = self.Book.GetBalance()[order[1].MarketCurrency]
+            else:
+                self.Book.Buy(order[1].MarketCurrency, qty, order[1].BaseCurrency, self.DataProvider)
+                qty = self.Book.GetBalance()[order[1].BaseCurrency]
+
 
 
 

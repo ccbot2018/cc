@@ -2,12 +2,14 @@ import os.path
 import pandas as pd
 import datetime as dt
 import numpy as np
+import json
 
 from Core.Frequency import Frequency
 from Core.CurrencyPairs import CurrencyPair
+from Core.ExchangePairsHelper import CreateAllPossiblePairs, CreateAllPossibleTransfers
 
 class DataProvider:
-    def __init__(self, exchange, cacheFolder, frequency, pairsDict):
+    def __init__(self, exchange, cacheFolder, frequency, pairsDict, preferredPivotCcy):
         self.Exchange = exchange
         self.ExchangeName = exchange.Name
         self.CacheFolder = cacheFolder
@@ -17,6 +19,10 @@ class DataProvider:
         self.DisableCalls = False
         self.RefCurrency = exchange.RefCurrency
         self.ToRefCcy = self.__toRefCurrencyDict()
+        currencies, baseCurrencies = self.__extractCurrencyList()
+        self.CurrencyList = set(list(baseCurrencies) + list(currencies))
+        self.AllPossibleCurrencyPairs = CreateAllPossiblePairs(self.CurrencyList)
+        self.AllPossibleTransfers = self.__loadFromCacheOrCreateAllPossibleTransfers(preferredPivotCcy)
         self.IsLoaded = False
 
     def RefreshCache(self):
@@ -153,6 +159,31 @@ class DataProvider:
                     retVal[currency] = list([("Long", basePair)])
                     retVal[currency].append(pivotToRef)
         return retVal
+
+    def __loadFromCacheOrCreateAllPossibleTransfers(self, preferredPivotCcy):
+        fileName = os.path.join(self.CacheFolder, "transfers_" + self.ExchangeName + ".json")
+        if os.path.isfile(fileName):
+            f = open(fileName, 'r')
+            data = f.read()
+            dataDict = json.loads(data)
+            dataDict2 = {CurrencyPair(t): [[u[0], CurrencyPair(u[1])] for u in dataDict[t]] for t in dataDict.keys()}
+            currencyPairs = dataDict2.keys()
+            extraCurrencyPairs = set(self.AllPossibleCurrencyPairs) - set(currencyPairs)
+            if (len(extraCurrencyPairs)) > 0:
+                extraTransfers =  CreateAllPossibleTransfers(extraCurrencyPairs, self.Markets, preferredPivotCcy)
+                dataDict2.update(extraTransfers)
+                self.__dumpTransfersJson(dataDict2, fileName)
+            return dataDict2
+        else:
+            dataDict = CreateAllPossibleTransfers(self.AllPossibleCurrencyPairs, self.Markets, preferredPivotCcy)
+            self.__dumpTransfersJson(dataDict, fileName)
+            return dataDict
+
+    def __dumpTransfersJson(self, dataDict, fileName):
+        dataDictString = {str(t): [[u[0], str(u[1])] for u in dataDict[t]] for t in dataDict.keys()}
+        dataJson = json.dumps(dataDictString, sort_keys=True, indent=4, separators=(',', ': '))
+        f = open(fileName, 'w')
+        f.write(dataJson)
 
 
 
