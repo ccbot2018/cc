@@ -9,7 +9,7 @@ from Core.CurrencyPairs import CurrencyPair
 from Core.ExchangePairsHelper import CreateAllPossiblePairs, CreateAllPossibleTransfers
 
 class DataProvider:
-    def __init__(self, exchange, cacheFolder, frequency, pairsDict, preferredPivotCcy):
+    def __init__(self, exchange, cacheFolder, frequency, pairsDict):
         self.Exchange = exchange
         self.ExchangeName = exchange.Name
         self.CacheFolder = cacheFolder
@@ -22,7 +22,7 @@ class DataProvider:
         currencies, baseCurrencies = self.__extractCurrencyList()
         self.CurrencyList = set(list(baseCurrencies) + list(currencies))
         self.AllPossibleCurrencyPairs = CreateAllPossiblePairs(self.CurrencyList)
-        self.AllPossibleTransfers = self.__loadFromCacheOrCreateAllPossibleTransfers(preferredPivotCcy)
+        self.AllPossibleTransfers = self.__loadFromCacheOrCreateAllPossibleTransfers(self.Exchange.PreferredPivotCurrency)
         self.IsLoaded = False
 
     def RefreshCache(self):
@@ -50,8 +50,14 @@ class DataProvider:
             self.GetSnapshotDataAllMarkets()
         return self.CloseDataStorage[currency].tail(1)[0]
 
+    def GetAllTimeSerieClose(self):
+        return self.CloseDataStorage
+
     def GetTime(self):
         return self.CloseDataStorage.index[-1]
+
+    def GetCurrencyList(self):
+        return self.RefCurrency.keys()
 
     def RefreshPairTimeSerie(self, currencyPair):
         print("Refreshing " + str(currencyPair) + " " + str(self.Frequency))

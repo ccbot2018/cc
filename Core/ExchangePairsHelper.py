@@ -16,7 +16,7 @@ def CreateAllPossibleTransfers(allCurrencyPairs, existingCurrencyPairs, refCcy):
         if currencyPair in existingCurrencyPairs:
             retVal[currencyPair] = list([("Long", currencyPair)])
         elif currencyPair.GetReversePair() in existingCurrencyPairs:
-            retVal[currencyPair] = list([("Short", currencyPair)])
+            retVal[currencyPair] = list([("Short", currencyPair.GetReversePair())])
         else:
             ccy1 = currencyPair.BaseCurrency
             ccy2 = currencyPair.MarketCurrency

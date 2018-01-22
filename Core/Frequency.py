@@ -12,7 +12,7 @@ class Frequency(Enum):
 
 
 FREQUENCIES_DICT = {Frequency.min : dt.timedelta(0,60),
-                        Frequency.fivemin : dt.timedelta(0,360),
+                        Frequency.fivemin : dt.timedelta(0,300),
                         Frequency.thirtymin : dt.timedelta(0, 1800),
                         Frequency.hour : dt.timedelta(0,3600),
                         Frequency.day : dt.timedelta(1)}

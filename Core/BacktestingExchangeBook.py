@@ -18,7 +18,7 @@ class BacktestingExchangeBook:
             else:
                 self.Balance[buyCurrency] = qtyBuyCurrency
             self.Orders.append((dataProvider.GetTime(), sellCurrency, quantitySellCurrency, buyCurrency, qtyBuyCurrency))
-            print((sellCurrency, quantitySellCurrency, buyCurrency,qtyBuyCurrency))
+            print((sellCurrency, quantitySellCurrency, buyCurrency, qtyBuyCurrency))
         else:
             return False
 
@@ -26,7 +26,7 @@ class BacktestingExchangeBook:
         return {k: v for k, v in self.Balance.items() if v>0}
 
     def ComputeMtMPerHolding(self, dataProvider):
-        retVal = dict
+        retVal = dict()
         for currency, quantity in self.Balance.items():
             currencyPrice = dataProvider.GetCurrentClose(currency)
             retVal[currency] = quantity * currencyPrice

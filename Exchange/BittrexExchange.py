@@ -14,12 +14,13 @@ FREQUENCIES_DICT =  {Frequency.hour: "hour", Frequency.min :"onemin", Frequency.
 
 class BittrexExchange:
 
-    def __init__(self, apiKey, apiVersion, refCurrency):
+    def __init__(self, apiKey, apiVersion, refCurrency, preferredPivotCurrency):
         self.ApiKey = apiKey
         self.RefCurrency = refCurrency
         self.ApiVersion = apiVersion
         self.Markets = self.RetrieveMarkets()
         self.Name = "BITTREX"
+        self.PreferredPivotCurrency = preferredPivotCurrency
 
     def RetrieveLiquidTradedPairs(self, minVolume):
         filteredCurrencies = self.__filterOutCurrencyPairsLowVolume(minVolume)
