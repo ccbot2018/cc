@@ -16,6 +16,10 @@ class DataProvider:
         self.Frequency = frequency
         self.Markets = pairsDict
         self.CloseDataStorage = pd.DataFrame()
+        self.OpenDataStorage = pd.DataFrame()
+        self.HighDataStorage = pd.DataFrame()
+        self.LowDataStorage = pd.DataFrame()
+        self.VolumeDataStorage = pd.DataFrame()
         self.DisableCalls = False
         self.RefCurrency = exchange.RefCurrency
         self.ToRefCcy = self.__toRefCurrencyDict()
@@ -29,14 +33,26 @@ class DataProvider:
         for pair, pairValue in self.Markets.items():
             self.RefreshPairTimeSerie(pair )
 
-    def LoadCachedClose(self):
+    def LoadCache(self):
         if self.IsLoaded:
             return
-        for pair, pairValue in self.Markets.items():
+        for pair in sorted(self.Markets.keys()):
             data =self.__getCachedPairData(pair, self.Frequency)
             self.CloseDataStorage[str(pair)] = data['Close']
+            self.OpenDataStorage[str(pair)] = data['Open']
+            self.HighDataStorage[str(pair)] = data['High']
+            self.LowDataStorage[str(pair)] = data['Low']
+            self.VolumeDataStorage[str(pair)] = data['Volume']
         self.CloseDataStorage =  self.CloseDataStorage.fillna(method='ffill')
         self.CloseDataStorage = self.CloseDataStorage.fillna(method='bfill')
+        self.OpenDataStorage = self.OpenDataStorage.fillna(method='ffill')
+        self.OpenDataStorage = self.OpenDataStorage.fillna(method='bfill')
+        self.HighDataStorage = self.HighDataStorage.fillna(method='ffill')
+        self.HighDataStorage = self.HighDataStorage.fillna(method='bfill')
+        self.LowDataStorage = self.LowDataStorage.fillna(method='ffill')
+        self.LowDataStorage = self.LowDataStorage.fillna(method='bfill')
+        self.VolumeDataStorage = self.VolumeDataStorage.fillna(method='ffill')
+        self.VolumeDataStorage = self.VolumeDataStorage.fillna(method='bfill')
         self.__rebaseToRefCcy()
         self.IsLoaded = True
 
@@ -126,13 +142,26 @@ class DataProvider:
         return os.path.join(self.CacheFolder,self.ExchangeName, str(ticker) +"_"+frequency.value+".csv" )
 
     def __rebaseToRefCcy(self):
-        for ccy, ccyPath in self.ToRefCcy.items():
+        for ccy in sorted(self.ToRefCcy.keys()):
+            ccyPath = self.ToRefCcy[ccy]
             self.CloseDataStorage[ccy] = 1.0
+            self.OpenDataStorage[ccy] = 1.0
+            self.HighDataStorage[ccy] = 1.0
+            self.LowDataStorage[ccy] = 1.0
             for pair in ccyPath:
                 if pair[0] == "Long":
                     self.CloseDataStorage[ccy] *= self.CloseDataStorage[str(pair[1])]
+                    self.OpenDataStorage[ccy] *= self.OpenDataStorage[str(pair[1])]
+                    self.HighDataStorage[ccy] *= self.HighDataStorage[str(pair[1])]
+                    self.LowDataStorage[ccy] *= self.LowDataStorage[str(pair[1])]
                 elif pair[0] == "Short":
-                    self.CloseDataStorage[ccy] *= 1.0 / self.CloseDataStorage[str(pair[1])]
+                    self.CloseDataStorage[ccy] *= 1.0/ self.CloseDataStorage[str(pair[1])]
+                    self.OpenDataStorage[ccy] *= 1.0 / self.OpenDataStorage[str(pair[1])]
+                    self.HighDataStorage[ccy] *= 1.0 / self.HighDataStorage[str(pair[1])]
+                    self.LowDataStorage[ccy] *= 1.0 / self.LowDataStorage[str(pair[1])]
+        for pair, pairValue in self.Markets.items():
+            marketCurrencyPrice = self.CloseDataStorage[pair.MarketCurrency]
+            self.VolumeDataStorage[str(pair)]*= marketCurrencyPrice
 
     def __extractCurrencyList(self):
         currencies = set()

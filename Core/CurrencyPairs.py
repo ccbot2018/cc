@@ -57,5 +57,11 @@ class CurrencyPair:
     def __str__(self):
         return self.BaseCurrency +"-"+self.MarketCurrency
 
+    def __gt__(self, other):
+        return str(self) > str(other)
+
+    def __lt__(self, other):
+        return str(self) < str(other)
+
     def GetReversePair(self):
         return CurrencyPair(self.MarketCurrency, self.BaseCurrency)

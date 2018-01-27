@@ -42,7 +42,7 @@ def RefreshCache():
     dataProvider3 = DataProvider(bittrex, cacheFolder, Frequency.hour, marketPairs)
     dataProvider3.RefreshCache()
     dataProvider4 = DataProvider(bittrex, cacheFolder, Frequency.day, marketPairs)
-    #dataProvider4.RefreshCache()
+    dataProvider4.RefreshCache()
 
 def CacheSnapshotTest():
     bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT")
@@ -110,4 +110,4 @@ def ReturnsAnalysis():
 
 
 if __name__ == "__main__":
-    MomentumStrategy()
+    RefreshCache()
