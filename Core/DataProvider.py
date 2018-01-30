@@ -7,6 +7,16 @@ import json
 from Core.Frequency import Frequency
 from Core.CurrencyPairs import CurrencyPair
 from Core.ExchangePairsHelper import CreateAllPossiblePairs, CreateAllPossibleTransfers
+from Utilities.FileWriter import WriteFile
+
+cache = {}
+
+def cached_date_parser(s):
+    if s in cache:
+        return cache[s]
+    dt = pd.to_datetime(s, format='%Y-%m-%d %H:%M:%S')
+    cache[s] = dt
+    return dt
 
 class DataProvider:
     def __init__(self, exchange, cacheFolder, frequency, pairsDict):
@@ -30,14 +40,15 @@ class DataProvider:
         self.IsLoaded = False
 
     def RefreshCache(self):
-        for pair, pairValue in self.Markets.items():
+        for pair in sorted(self.Markets.keys()):
             self.RefreshPairTimeSerie(pair )
 
     def LoadCache(self):
         if self.IsLoaded:
             return
         for pair in sorted(self.Markets.keys()):
-            data =self.__getCachedPairData(pair, self.Frequency)
+            data = self.__getCachedPairData(pair, self.Frequency)
+            data = data[~data.index.duplicated(keep='first')]
             self.CloseDataStorage[str(pair)] = data['Close']
             self.OpenDataStorage[str(pair)] = data['Open']
             self.HighDataStorage[str(pair)] = data['High']
@@ -79,6 +90,7 @@ class DataProvider:
         print("Refreshing " + str(currencyPair) + " " + str(self.Frequency))
         fileName = self.__pairCacheFileName(currencyPair, self.Frequency)
         exchangeData_df = self.Exchange.GetCurrencyPairTimeSerie(currencyPair, self.Frequency)
+        print("Retrieved data")
         cacheData_df = pd.DataFrame()
         if os.path.isfile(fileName):
             cacheData_df = pd.read_csv(fileName, index_col= 0,
@@ -105,6 +117,13 @@ class DataProvider:
             self.__cacheSnapshotPair(pair, allMarkets[pair], stampDate)
         self.__rebaseToRefCcy()
 
+    def OutputCache(self):
+        WriteFile(self.CacheFolder, self.ExchangeName + "_Close", self.CloseDataStorage, True)
+        WriteFile(self.CacheFolder, self.ExchangeName + "_Open", self.OpenDataStorage, True)
+        WriteFile(self.CacheFolder, self.ExchangeName + "_High", self.HighDataStorage, True)
+        WriteFile(self.CacheFolder, self.ExchangeName + "_Low", self.LowDataStorage, True)
+        WriteFile(self.CacheFolder, self.ExchangeName + "_Open", self.VolumeDataStorage, True)
+
     def __getCachedPairData(self, currencyPair, frequency):
         print("Retrieving " + str(currencyPair) + " " + str(frequency))
         fileName = self.__pairCacheFileName(currencyPair, frequency)
@@ -113,7 +132,7 @@ class DataProvider:
             if os.path.isfile(fileName):
                 cacheData_df = pd.read_csv(fileName, index_col=0,
                                            header=None, names=["BaseVolume", "Close", "High", "Low", "Open", "Volume"],
-                                           parse_dates=True)
+                                           parse_dates=True, date_parser= cached_date_parser)
         else:
             cacheData_df = pd.read_csv(fileName, index_col=0,
                                                header=None, names=["MinTradeSize", "Ask", "Bid", "Close", "Mid"],

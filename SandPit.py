@@ -45,16 +45,16 @@ def RefreshCache():
     dataProvider4.RefreshCache()
 
 def CacheSnapshotTest():
-    bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT")
+    bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT", "BTC")
     currentDir = os.path.abspath(os.path.dirname(__file__))
     cacheFolder = os.path.join(currentDir, "Cache")
 
     marketPairs = bittrex.RetrieveMarkets()
-    btcMarkets = list(filter(lambda t: t.BaseCurrency =="BTC" or t.MarketCurrency == "BTC",marketPairs.keys()))
-    marketPairsFiltered = {key: marketPairs[key] for key in btcMarkets}
-    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.min,marketPairsFiltered)
-    dataProvider.LoadCachedClose()
-    t = dataProvider.GetSnapshotDataAllMarkets()
+    #btcMarkets = list(filter(lambda t: t.BaseCurrency =="BTC" or t.MarketCurrency == "BTC",marketPairs.keys()))
+    #marketPairsFiltered = {key: marketPairs[key] for key in btcMarkets}
+    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.min,marketPairs)
+    dataProvider.LoadCache()
+    dataProvider.OutputCache()
     b=2
 
 def SimpleStrategyBacktesting():
@@ -110,4 +110,4 @@ def ReturnsAnalysis():
 
 
 if __name__ == "__main__":
-    RefreshCache()
+    CacheSnapshotTest()
