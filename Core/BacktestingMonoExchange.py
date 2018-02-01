@@ -11,7 +11,7 @@ class BackTestingMonoExchange:
         self.Strategy = strategy
         self.DataProvider = dataProvider
         self.DataProvider.DisableCalls = True
-        self.DataProvider.LoadCache()
+        self.DataProvider.load_cache()
         self.DataUniverse = self.DataProvider.CloseDataStorage.copy()
         self.Fees = fees
         self.BidAskSpread = bidAskSpread

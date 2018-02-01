@@ -7,7 +7,7 @@ class BestPerformersStrategy:
 
 
     def Pick(self, dataProvider):
-        timeSeries = dataProvider.GetAllTimeSerieClose()
+        timeSeries = dataProvider.get_all_time_series_close()
         ccyList = list(dataProvider.CurrencyList)
         ccyTimeSeries = timeSeries[ccyList]
         returns = (ccyTimeSeries - ccyTimeSeries.shift(self.ObservationWindow)) / ccyTimeSeries.shift(self.ObservationWindow)

@@ -18,29 +18,29 @@ class GenericBalancingStrategy:
     def Update(self, date):
         if self.State == "NotStarted":
             currenciesToHold = self.CurrencyPicker.Pick(self.DataProvider)
-            self.LastReBalancingMtM = self.Book.ComputeMtMPerHolding(self.DataProvider)
+            self.LastReBalancingMtM = self.Book.compute_mtm_per_holding(self.DataProvider)
             self.__rebalanceBook(currenciesToHold)
             self.State = "LongPositions"
             self.LastReBalancing = date
-            self.LastReBalancingMtM = self.Book.ComputeMtMPerHolding(self.DataProvider)
-            return self.Book.ComputeMtM(self.DataProvider)
+            self.LastReBalancingMtM = self.Book.compute_mtm_per_holding(self.DataProvider)
+            return self.Book.compute_mtm(self.DataProvider)
         elif self.State == "LongPositions" and date >= (self.LastReBalancing + self.RebalancingFrequency):
             currenciesToHold = self.CurrencyPicker.Pick(self.DataProvider)
             self.__rebalanceBook(currenciesToHold)
             self.State = "LongPositions"
             self.LastReBalancing = date
-            self.LastReBalancingMtM = self.Book.ComputeMtMPerHolding(self.DataProvider)
-            return self.Book.ComputeMtM(self.DataProvider)
+            self.LastReBalancingMtM = self.Book.compute_mtm_per_holding(self.DataProvider)
+            return self.Book.compute_mtm(self.DataProvider)
         elif self.State == "LongPositions" \
             and (self.LastReBalancing + self.RebalancingFrequency) > date > (self.LastStopLossMonitoring + self.StopLossFrequency):
             self.LastStopLossMonitoring = date
             self.__monitorStopLosses()
-            self.LastReBalancingMtM = self.Book.ComputeMtMPerHolding(self.DataProvider)
-            return self.Book.ComputeMtM(self.DataProvider)
+            self.LastReBalancingMtM = self.Book.compute_mtm_per_holding(self.DataProvider)
+            return self.Book.compute_mtm(self.DataProvider)
 
 
     def __monitorStopLosses(self):
-        currentHoldings =  self.Book.ComputeMtMPerHolding(self.DataProvider)
+        currentHoldings =  self.Book.compute_mtm_per_holding(self.DataProvider)
         for currency in [t for t in currentHoldings.keys() if t is not self.DataProvider.RefCurrency and currentHoldings[t] >0]:
             if currentHoldings[currency] <= (1-self.StopLossLevel)*self.LastReBalancingMtM[currency]:
                 print("Stop loss activated for " + currency)
@@ -51,7 +51,7 @@ class GenericBalancingStrategy:
     def __liquidateCurrency(self, sellCcy):
         currencyPair = CurrencyPair(sellCcy, self.DataProvider.RefCurrency)
         orders = self.DataProvider.AllPossibleTransfers[currencyPair]
-        qty = self.Book.GetBalance()[sellCcy]
+        qty = self.Book.get_balance()[sellCcy]
         for order in orders:
             qty = self.__executeOrder(order, qty)
 
@@ -63,11 +63,11 @@ class GenericBalancingStrategy:
         for ccy in [t for t in liquidateCurrencies if t != self.PivotCcy]:
             currencyPair = CurrencyPair(ccy, self.PivotCcy)
             orders = self.DataProvider.AllPossibleTransfers[currencyPair]
-            qty = self.Book.GetBalance()[ccy]
+            qty = self.Book.get_balance()[ccy]
             for order in orders:
                 qty = self.__executeOrder(order, qty)
         if len(newCurrenciesToHold)>0:
-            qtyToBuy = self.Book.GetBalance()[self.PivotCcy]/len(newCurrenciesToHold)
+            qtyToBuy = self.Book.get_balance()[self.PivotCcy] / len(newCurrenciesToHold)
             for ccy in [t for t in newCurrenciesToHold if t != self.PivotCcy]:
                 currencyPair = CurrencyPair(self.PivotCcy, ccy)
                 orders = self.DataProvider.AllPossibleTransfers[currencyPair]
@@ -78,11 +78,11 @@ class GenericBalancingStrategy:
 
     def __executeOrder(self, order, qty):
         if order[0] == "Long":
-            self.Book.Buy(order[1].BaseCurrency, qty, order[1].MarketCurrency, self.DataProvider)
-            return self.Book.GetBalance()[order[1].MarketCurrency]
+            self.Book.buy(order[1].BaseCurrency, qty, order[1].MarketCurrency, self.DataProvider)
+            return self.Book.get_balance()[order[1].MarketCurrency]
         else:
-            self.Book.Buy(order[1].MarketCurrency, qty, order[1].BaseCurrency, self.DataProvider)
-            return self.Book.GetBalance()[order[1].BaseCurrency]
+            self.Book.buy(order[1].MarketCurrency, qty, order[1].BaseCurrency, self.DataProvider)
+            return self.Book.get_balance()[order[1].BaseCurrency]
 
 
 

@@ -15,99 +15,106 @@ import datetime as dt
 import os.path
 import pandas as pd
 
-def TriangularArbitrage():
-    bittrex = BittrexExchange("asdasdasda2", "v1.1","USDT")
-    pairs = bittrex.RetrieveLiquidTradedPairs(50000)
+
+def triangular_arbitrage():
+    bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT")
+    pairs = bittrex.retrieve_liquid_traded_pairs(50000)
     arbitrageur = TriangularArbitrageur(pairs, 0.0025)
-    while(True):
+    while True:
         a = dt.datetime.now()
-        data = bittrex.GetMarketsSnapshot()
-        b= dt.datetime.now()
+        data = bittrex.get_markets_snapshot()
+        b = dt.datetime.now()
         arbitrageur.EvaluateArbitragePossibilities(data)
         c = dt.datetime.now()
-        print(str(a) +"  " + str((b-a).microseconds/1000) + "   " + str((c-b).microseconds/1000))
+        print(str(a) + "  " + str((b - a).microseconds / 1000) + "   " + str((c - b).microseconds / 1000))
 
-def RefreshCache():
+
+def refresh_cache():
     bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT", "BTC")
-    currentDir = os.path.abspath(os.path.dirname(__file__))
-    cacheFolder = os.path.join(currentDir, "Cache")
+    current_dir = os.path.abspath(os.path.dirname(__file__))
+    cache_folder = os.path.join(current_dir, "Cache")
 
-    marketPairs = bittrex.RetrieveMarkets()
-    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.min, marketPairs)
-    dataProvider.RefreshCache()
-    dataProvider1 = DataProvider(bittrex, cacheFolder, Frequency.fivemin, marketPairs)
-    dataProvider1.RefreshCache()
-    dataProvider2 = DataProvider(bittrex, cacheFolder, Frequency.thirtymin, marketPairs)
-    dataProvider2.RefreshCache()
-    dataProvider3 = DataProvider(bittrex, cacheFolder, Frequency.hour, marketPairs)
-    dataProvider3.RefreshCache()
-    dataProvider4 = DataProvider(bittrex, cacheFolder, Frequency.day, marketPairs)
-    dataProvider4.RefreshCache()
+    market_pairs = bittrex.retrieve_markets()
+    data_provider = DataProvider(bittrex, cache_folder, Frequency.min, market_pairs)
+    data_provider.refresh_cache()
+    data_provider1 = DataProvider(bittrex, cache_folder, Frequency.fivemin, market_pairs)
+    data_provider1.refresh_cache()
+    data_provider2 = DataProvider(bittrex, cache_folder, Frequency.thirtymin, market_pairs)
+    data_provider2.refresh_cache()
+    data_provider3 = DataProvider(bittrex, cache_folder, Frequency.hour, market_pairs)
+    data_provider3.refresh_cache()
+    data_provider4 = DataProvider(bittrex, cache_folder, Frequency.day, market_pairs)
+    data_provider4.refresh_cache()
 
-def CacheSnapshotTest():
+
+def cache_snapshot_test():
     bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT", "BTC")
-    currentDir = os.path.abspath(os.path.dirname(__file__))
-    cacheFolder = os.path.join(currentDir, "Cache")
+    current_dir = os.path.abspath(os.path.dirname(__file__))
+    cache_folder = os.path.join(current_dir, "Cache")
 
-    marketPairs = bittrex.RetrieveMarkets()
-    #btcMarkets = list(filter(lambda t: t.BaseCurrency =="BTC" or t.MarketCurrency == "BTC",marketPairs.keys()))
-    #marketPairsFiltered = {key: marketPairs[key] for key in btcMarkets}
-    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.min,marketPairs)
-    dataProvider.LoadCache()
-    dataProvider.OutputCache()
-    b=2
+    market_pairs = bittrex.retrieve_markets()
+    # btcMarkets = list(filter(lambda t: t.BaseCurrency =="BTC" or t.MarketCurrency == "BTC",marketPairs.keys()))
+    # marketPairsFiltered = {key: marketPairs[key] for key in btcMarkets}
+    market_pairs = {k: market_pairs[k] for k in list(market_pairs.keys())[:10]}
+    data_provider = DataProvider(bittrex, cache_folder, Frequency.min, market_pairs)
+    #data_provider.load_binary_cache()
+    data_provider.load_cache()
+    data_provider.write_binary_cache()
+    b = 2
 
-def SimpleStrategyBacktesting():
-    startDate = dt.datetime(2017,12,12)
-    endDate = dt.datetime(2017, 12, 22)
+
+def simple_strategy_backtesting():
+    start_date = dt.datetime(2017, 12, 12)
+    end_date = dt.datetime(2017, 12, 22)
     strategy = BuyBasketAndHold(["ADA", "ETH", "BTC"])
     strategy1 = BuyAndHold("BTC")
     bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT")
-    currentDir = os.path.abspath(os.path.dirname(__file__))
-    cacheFolder = os.path.join(currentDir, "Cache")
-    marketPairs = bittrex.Markets
-    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.thirtymin, marketPairs)
-    bc = BackTestingMonoExchange(startDate, endDate, Frequency.thirtymin, strategy,dataProvider, 0.0025, 0.01)
+    current_dir = os.path.abspath(os.path.dirname(__file__))
+    cache_folder = os.path.join(current_dir, "Cache")
+    market_pairs = bittrex.markets_dict
+    data_provider = DataProvider(bittrex, cache_folder, Frequency.thirtymin, market_pairs)
+    bc = BackTestingMonoExchange(start_date, end_date, Frequency.thirtymin, strategy, data_provider, 0.0025, 0.01)
     bc.SetUp()
     mtm = bc.Start()
     mtm = mtm.resample('D').last()
-    with open(cacheFolder + "\\result.csv", 'w') as f:
-        mtm.to_csv(f, header= False)
-    bc = BackTestingMonoExchange(startDate, endDate, Frequency.thirtymin, strategy1,dataProvider, 0.0025, 0.01)
+    with open(cache_folder + "\\result.csv", 'w') as f:
+        mtm.to_csv(f, header=False)
+    bc = BackTestingMonoExchange(start_date, end_date, Frequency.thirtymin, strategy1, data_provider, 0.0025, 0.01)
     bc.SetUp()
     mtm = bc.Start()
     mtm = mtm.resample('D').last()
-    with open(cacheFolder + "\\result1.csv", 'w') as f:
-        mtm.to_csv(f, header= False)
-
-def MomentumStrategy():
-    startDate = dt.datetime(2017, 12, 12)
-    endDate = dt.datetime(2018, 1, 1)
-    currencyPicker = BestPerformersStrategy(2, 24)
-    strategy1 = GenericBalancingStrategy(dt.timedelta(0,7200), dt.timedelta(0,300), currencyPicker, 0.05, "BTC")
-    bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT", "BTC")
-    currentDir = os.path.abspath(os.path.dirname(__file__))
-    cacheFolder = os.path.join(currentDir, "Cache")
-    marketPairs = bittrex.Markets
-    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.fivemin, marketPairs)
-    bc = BackTestingMonoExchange(startDate, endDate, Frequency.fivemin, strategy1, dataProvider, 0.0025, 0.01)
-    bc.SetUp()
-    mtm = bc.Start()
-    mtm = mtm.resample('D').last()
-    with open(cacheFolder + "\\resultMomentum.csv", 'w') as f:
+    with open(cache_folder + "\\result1.csv", 'w') as f:
         mtm.to_csv(f, header=False)
 
-def ReturnsAnalysis():
-    bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT", "BTC")
-    currentDir = os.path.abspath(os.path.dirname(__file__))
-    cacheFolder = os.path.join(currentDir, "Cache")
-    marketPairs = bittrex.RetrieveMarkets()
-    btcMarkets = list(filter(lambda t: t.BaseCurrency == "BTC" or t.MarketCurrency == "BTC", marketPairs.keys()))
-    marketPairsFiltered = {key: marketPairs[key] for key in btcMarkets}
-    dataProvider = DataProvider(bittrex, cacheFolder, Frequency.min, marketPairsFiltered)
-    ScatterPlotReturnsExcessReturn(dataProvider,10,50)
 
+def momentum_strategy():
+    start_date = dt.datetime(2017, 12, 12)
+    end_date = dt.datetime(2018, 1, 1)
+    currency_picker = BestPerformersStrategy(2, 24)
+    strategy1 = GenericBalancingStrategy(dt.timedelta(0, 7200), dt.timedelta(0, 300), currency_picker, 0.05, "BTC")
+    bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT", "BTC")
+    current_dir = os.path.abspath(os.path.dirname(__file__))
+    cache_folder = os.path.join(current_dir, "Cache")
+    market_pairs = bittrex.markets_dict
+    data_provider = DataProvider(bittrex, cache_folder, Frequency.fivemin, market_pairs)
+    bc = BackTestingMonoExchange(start_date, end_date, Frequency.fivemin, strategy1, data_provider, 0.0025, 0.01)
+    bc.SetUp()
+    mtm = bc.Start()
+    mtm = mtm.resample('D').last()
+    with open(cache_folder + "\\resultMomentum.csv", 'w') as f:
+        mtm.to_csv(f, header=False)
+
+
+def return_analysis():
+    bittrex = BittrexExchange("asdasdasda2", "v1.1", "USDT", "BTC")
+    current_dir = os.path.abspath(os.path.dirname(__file__))
+    cache_folder = os.path.join(current_dir, "Cache")
+    market_pairs = bittrex.retrieve_markets()
+    btc_markets = list(filter(lambda t: t.BaseCurrency == "BTC" or t.MarketCurrency == "BTC", market_pairs.keys()))
+    market_pairs_filtered = {key: market_pairs[key] for key in btc_markets}
+    data_provider = DataProvider(bittrex, cache_folder, Frequency.min, market_pairs_filtered)
+    ScatterPlotReturnsExcessReturn(data_provider, 10, 50)
 
 
 if __name__ == "__main__":
-    CacheSnapshotTest()
+    cache_snapshot_test()

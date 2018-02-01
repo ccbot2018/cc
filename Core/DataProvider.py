@@ -3,241 +3,285 @@ import pandas as pd
 import datetime as dt
 import numpy as np
 import json
+import time
 
 from Core.Frequency import Frequency
 from Core.CurrencyPairs import CurrencyPair
-from Core.ExchangePairsHelper import CreateAllPossiblePairs, CreateAllPossibleTransfers
-from Utilities.FileWriter import WriteFile
+from Core.ExchangePairsHelper import create_all_possible_pairs, create_all_possible_transfers
+from Utilities.FileWriter import write_file, write_binary_file
 
-cache = {}
+dateCache = {}
+
+date_format = '%Y-%m-%d %H:%M:%S'
+
 
 def cached_date_parser(s):
-    if s in cache:
-        return cache[s]
-    dt = pd.to_datetime(s, format='%Y-%m-%d %H:%M:%S')
-    cache[s] = dt
-    return dt
+    if s in dateCache:
+        return dateCache[s]
+    date = pd.to_datetime(s, format=date_format)
+    dateCache[s] = date
+    return date
+
+
+def dump_transfers_to_json(data_dict, file_name):
+    data_dict_string = {str(t): [[u[0], str(u[1])] for u in data_dict[t]] for t in data_dict.keys()}
+    data_json = json.dumps(data_dict_string, sort_keys=True, indent=4, separators=(',', ': '))
+    f = open(file_name, 'w')
+    f.write(data_json)
+
 
 class DataProvider:
-    def __init__(self, exchange, cacheFolder, frequency, pairsDict):
-        self.Exchange = exchange
-        self.ExchangeName = exchange.Name
-        self.CacheFolder = cacheFolder
-        self.Frequency = frequency
-        self.Markets = pairsDict
-        self.CloseDataStorage = pd.DataFrame()
-        self.OpenDataStorage = pd.DataFrame()
-        self.HighDataStorage = pd.DataFrame()
-        self.LowDataStorage = pd.DataFrame()
-        self.VolumeDataStorage = pd.DataFrame()
-        self.DisableCalls = False
-        self.RefCurrency = exchange.RefCurrency
-        self.ToRefCcy = self.__toRefCurrencyDict()
-        currencies, baseCurrencies = self.__extractCurrencyList()
-        self.CurrencyList = set(list(baseCurrencies) + list(currencies))
-        self.AllPossibleCurrencyPairs = CreateAllPossiblePairs(self.CurrencyList)
-        self.AllPossibleTransfers = self.__loadFromCacheOrCreateAllPossibleTransfers(self.Exchange.PreferredPivotCurrency)
-        self.IsLoaded = False
+    def __init__(self, exchange, cache_folder, frequency, pairs_dict):
+        self.exchange = exchange
+        self.exchange_name = exchange.name
+        self.cache_folder = cache_folder
+        self.frequency = frequency
+        self.markets_dict = pairs_dict
+        self.close_data_storage = pd.DataFrame()
+        self.open_data_storage = pd.DataFrame()
+        self.high_data_storage = pd.DataFrame()
+        self.low_data_storage = pd.DataFrame()
+        self.volume_data_storage = pd.DataFrame()
+        self.disable_calls = False
+        self.reference_currency = exchange.reference_currency
+        self.to_reference_currency_dict = self.__to_ref_currency_dict()
+        currencies, base_currencies = self.__extract_currency_list()
+        self.currency_list = set(list(base_currencies) + list(currencies))
+        self.all_possible_currency_pairs = create_all_possible_pairs(self.currency_list)
+        self.all_possible_transfers = self.__load_from_cache_or_create_all_transfers(
+            self.exchange.preferred_pivot_currency)
+        self.is_loaded = False
 
-    def RefreshCache(self):
-        for pair in sorted(self.Markets.keys()):
-            self.RefreshPairTimeSerie(pair )
+    def refresh_cache(self):
+        for pair in sorted(self.markets_dict.keys()):
+            self.__refresh_pair_time_serie(pair)
 
-    def LoadCache(self):
-        if self.IsLoaded:
+    def load_cache(self):
+        if self.is_loaded:
             return
-        for pair in sorted(self.Markets.keys()):
-            data = self.__getCachedPairData(pair, self.Frequency)
+        for pair in sorted(self.markets_dict.keys()):
+            data = self.__get_cached_pair_data(pair, self.frequency)
             data = data[~data.index.duplicated(keep='first')]
-            self.CloseDataStorage[str(pair)] = data['Close']
-            self.OpenDataStorage[str(pair)] = data['Open']
-            self.HighDataStorage[str(pair)] = data['High']
-            self.LowDataStorage[str(pair)] = data['Low']
-            self.VolumeDataStorage[str(pair)] = data['Volume']
-        self.CloseDataStorage =  self.CloseDataStorage.fillna(method='ffill')
-        self.CloseDataStorage = self.CloseDataStorage.fillna(method='bfill')
-        self.OpenDataStorage = self.OpenDataStorage.fillna(method='ffill')
-        self.OpenDataStorage = self.OpenDataStorage.fillna(method='bfill')
-        self.HighDataStorage = self.HighDataStorage.fillna(method='ffill')
-        self.HighDataStorage = self.HighDataStorage.fillna(method='bfill')
-        self.LowDataStorage = self.LowDataStorage.fillna(method='ffill')
-        self.LowDataStorage = self.LowDataStorage.fillna(method='bfill')
-        self.VolumeDataStorage = self.VolumeDataStorage.fillna(method='ffill')
-        self.VolumeDataStorage = self.VolumeDataStorage.fillna(method='bfill')
-        self.__rebaseToRefCcy()
-        self.IsLoaded = True
+            if not data.empty:
+                self.close_data_storage[str(pair)] = data['Close']
+                self.open_data_storage[str(pair)] = data['Open']
+                self.high_data_storage[str(pair)] = data['High']
+                self.low_data_storage[str(pair)] = data['Low']
+                self.volume_data_storage[str(pair)] = data['Volume']
+        self.close_data_storage = self.close_data_storage.fillna(method='ffill')
+        self.close_data_storage = self.close_data_storage.fillna(method='bfill')
+        self.open_data_storage = self.open_data_storage.fillna(method='ffill')
+        self.open_data_storage = self.open_data_storage.fillna(method='bfill')
+        self.high_data_storage = self.high_data_storage.fillna(method='ffill')
+        self.high_data_storage = self.high_data_storage.fillna(method='bfill')
+        self.low_data_storage = self.low_data_storage.fillna(method='ffill')
+        self.low_data_storage = self.low_data_storage.fillna(method='bfill')
+        self.volume_data_storage = self.volume_data_storage.fillna(method='ffill')
+        self.volume_data_storage = self.volume_data_storage.fillna(method='bfill')
+        self.__rebase_to_ref_ccy()
+        self.is_loaded = True
 
-    def GetTimeSerieClose(self, currency):
-        if not self.DisableCalls:
-            self.GetSnapshotDataAllMarkets()
-        return self.CloseDataStorage[currency]
+    def get_time_series_close(self, currency):
+        if not self.disable_calls:
+            self.get_snapshot_data_all_markets()
+        return self.close_data_storage[currency]
 
-    def GetCurrentClose(self, currency):
-        if not self.DisableCalls:
-            self.GetSnapshotDataAllMarkets()
-        return self.CloseDataStorage[currency].tail(1)[0]
+    def get_current_close(self, currency):
+        if not self.disable_calls:
+            self.get_snapshot_data_all_markets()
+        return self.close_data_storage[currency].tail(1)[0]
 
-    def GetAllTimeSerieClose(self):
-        return self.CloseDataStorage
+    def get_all_time_series_close(self):
+        return self.close_data_storage
 
-    def GetTime(self):
-        return self.CloseDataStorage.index[-1]
+    def get_time(self):
+        return self.close_data_storage.index[-1]
 
-    def GetCurrencyList(self):
-        return self.RefCurrency.keys()
+    def get_currency_list(self):
+        return self.reference_currency.keys()
 
-    def RefreshPairTimeSerie(self, currencyPair):
-        print("Refreshing " + str(currencyPair) + " " + str(self.Frequency))
-        fileName = self.__pairCacheFileName(currencyPair, self.Frequency)
-        exchangeData_df = self.Exchange.GetCurrencyPairTimeSerie(currencyPair, self.Frequency)
+    def __refresh_pair_time_serie(self, currency_pair):
+        print("Refreshing " + str(currency_pair) + " " + str(self.frequency))
+        file_name = self.__pair_cache_file_name(currency_pair, self.frequency)
+        exchange_data_df = self.exchange.get_currency_pair_time_serie(currency_pair, self.frequency)
         print("Retrieved data")
-        cacheData_df = pd.DataFrame()
-        if os.path.isfile(fileName):
-            cacheData_df = pd.read_csv(fileName, index_col= 0,
-                                header = None, names= ["BaseVolume","Close", "High", "Low", "Open","Volume"],
-                                parse_dates= True)
-        if not cacheData_df.empty:
-            lastCacheDate = cacheData_df.index.values[-1]
-            exchangeData_df = exchangeData_df.loc[exchangeData_df.index > lastCacheDate]
-            with open(fileName, 'a') as f:
-                exchangeData_df.to_csv(f, header=False)
+        cache_data_df = pd.DataFrame()
+        if os.path.isfile(file_name):
+            cache_data_df = pd.read_csv(file_name, index_col=0,
+                                        header=None, names=["BaseVolume", "Close", "High", "Low", "Open", "Volume"],
+                                        parse_dates=True)
+        if not cache_data_df.empty:
+            last_cache_date = cache_data_df.index.values[-1]
+            exchange_data_df = exchange_data_df.loc[exchange_data_df.index > last_cache_date]
+            with open(file_name, 'a') as f:
+                exchange_data_df.to_csv(f, header=False)
         else:
-            with open(fileName, 'w') as f:
-                exchangeData_df.to_csv(f, header=False)
+            with open(file_name, 'w') as f:
+                exchange_data_df.to_csv(f, header=False)
 
-    def GetSnapshotDataAllMarkets(self):
-        allMarkets = self.Exchange.GetMarketsSnapshot()
-        stampDate = dt.datetime.now()
-        emptyRow = np.empty((1, len(self.CloseDataStorage.columns)))
-        emptyRow[:] = np.nan
-        emptyRow_df = pd.DataFrame(emptyRow, columns= self.CloseDataStorage.columns)
-        emptyRow_df = emptyRow_df.set_index(pd.DatetimeIndex([stampDate]))
-        self.CloseDataStorage = self.CloseDataStorage.append(emptyRow_df)
-        for pair in self.Markets:
-            self.__cacheSnapshotPair(pair, allMarkets[pair], stampDate)
-        self.__rebaseToRefCcy()
+    def get_snapshot_data_all_markets(self):
+        all_markets = self.exchange.get_markets_snapshot()
+        stamp_date = dt.datetime.now()
+        empty_row = np.empty((1, len(self.close_data_storage.columns)))
+        empty_row[:] = np.nan
+        empty_row_df = pd.DataFrame(empty_row, columns=self.close_data_storage.columns)
+        empty_row_df = empty_row_df.set_index(pd.DatetimeIndex([stamp_date]))
+        self.close_data_storage = self.close_data_storage.append(empty_row_df)
+        for pair in self.markets_dict:
+            self.__cache_snapshot_pair(pair, all_markets[pair], stamp_date)
+        self.__rebase_to_ref_ccy()
 
-    def OutputCache(self):
-        WriteFile(self.CacheFolder, self.ExchangeName + "_Close", self.CloseDataStorage, True)
-        WriteFile(self.CacheFolder, self.ExchangeName + "_Open", self.OpenDataStorage, True)
-        WriteFile(self.CacheFolder, self.ExchangeName + "_High", self.HighDataStorage, True)
-        WriteFile(self.CacheFolder, self.ExchangeName + "_Low", self.LowDataStorage, True)
-        WriteFile(self.CacheFolder, self.ExchangeName + "_Open", self.VolumeDataStorage, True)
+    def output_prices_all_to_csv(self):
+        currencies = [t for t in list(self.close_data_storage) if '-' not in t]
+        write_file(self.cache_folder, self.exchange_name + "_Close", self.close_data_storage[currencies], True)
+        write_file(self.cache_folder, self.exchange_name + "_Open", self.open_data_storage[currencies], True)
+        write_file(self.cache_folder, self.exchange_name + "_High", self.high_data_storage[currencies], True)
+        write_file(self.cache_folder, self.exchange_name + "_Low", self.low_data_storage[currencies], True)
+        write_file(self.cache_folder, self.exchange_name + "_Volume", self.volume_data_storage, True)
 
-    def __getCachedPairData(self, currencyPair, frequency):
-        print("Retrieving " + str(currencyPair) + " " + str(frequency))
-        fileName = self.__pairCacheFileName(currencyPair, frequency)
-        cacheData_df = pd.DataFrame()
+    def output_ptices_for_given_currency_list_to_csv(self, currencies):
+        write_file(self.cache_folder, self.exchange_name + "_Close", self.close_data_storage[currencies], True)
+        write_file(self.cache_folder, self.exchange_name + "_Open", self.open_data_storage[currencies], True)
+        write_file(self.cache_folder, self.exchange_name + "_High", self.high_data_storage[currencies], True)
+        write_file(self.cache_folder, self.exchange_name + "_Low", self.low_data_storage[currencies], True)
+        write_file(self.cache_folder, self.exchange_name + "_Volume", self.volume_data_storage, True)
+
+    def write_binary_cache(self):
+        close_data_rec_array = self.__process_table_to_be_cached(self.close_data_storage)
+        open_data_rec_array = self.__process_table_to_be_cached(self.open_data_storage)
+        low_data_rec_array = self.__process_table_to_be_cached(self.low_data_storage)
+        high_data_rec_array = self.__process_table_to_be_cached(self.high_data_storage)
+        volume_data_rec_array = self.__process_table_to_be_cached(self.volume_data_storage)
+        write_binary_file(self.cache_folder, self.exchange_name + "_Close", close_data_rec_array, False)
+        write_binary_file(self.cache_folder, self.exchange_name + "_Open", open_data_rec_array, False)
+        write_binary_file(self.cache_folder, self.exchange_name + "_High", high_data_rec_array, False)
+        write_binary_file(self.cache_folder, self.exchange_name + "_Low", low_data_rec_array, False)
+        write_binary_file(self.cache_folder, self.exchange_name + "_Volume", volume_data_rec_array, False)
+
+    def load_binary_cache(self):
+        close_file_path =  os.path.join(self.cache_folder, self.exchange_name + "_Close.bin")
+        df = np.fromfile(close_file_path)
+        a = 2
+
+    @staticmethod
+    def __process_table_to_be_cached(data_table):
+        data_table2 = pd.DataFrame(data_table)
+        date_time_index = pd.to_datetime(data_table.index.values)
+        string_dates = [t.strftime("%Y-%m-%d %H:%M:%S") for t in date_time_index]
+        rec_array = data_table2.to_records()
+        rec_array["index"] = string_dates
+        dtypes = rec_array.dtype.descr
+        dtypes[0] = ('index', 'U')
+        new_rec_array = rec_array.astype(dtypes)
+        return new_rec_array
+
+    def __get_cached_pair_data(self, currency_pair, frequency):
+        print("Retrieving " + str(currency_pair) + " " + str(frequency))
+        start_time = time.clock()
+        file_name = self.__pair_cache_file_name(currency_pair, frequency)
+        cache_data_df = pd.DataFrame()
         if frequency is not Frequency.snapshot:
-            if os.path.isfile(fileName):
-                cacheData_df = pd.read_csv(fileName, index_col=0,
-                                           header=None, names=["BaseVolume", "Close", "High", "Low", "Open", "Volume"],
-                                           parse_dates=True, date_parser= cached_date_parser)
+            if os.path.isfile(file_name):
+                cache_data_df = pd.read_csv(file_name, index_col=0,
+                                            header=None, names=["BaseVolume", "Close", "High", "Low", "Open", "Volume"],
+                                            parse_dates=True, date_parser=cached_date_parser)
         else:
-            cacheData_df = pd.read_csv(fileName, index_col=0,
-                                               header=None, names=["MinTradeSize", "Ask", "Bid", "Close", "Mid"],
-                                               parse_dates=True)
-        return cacheData_df
+            cache_data_df = pd.read_csv(file_name, index_col=0,
+                                        header=None, names=["MinTradeSize", "Ask", "Bid", "Close", "Mid"],
+                                        parse_dates=True)
+        print(str(time.clock() - start_time))
+        return cache_data_df
 
-    def __cacheSnapshotPair(self, currencyPair, exchangePairMarketData, stampDate):
-        fileName = self.__pairCacheFileName(currencyPair, Frequency.snapshot)
-        self.CloseDataStorage[str(currencyPair)][-1] = exchangePairMarketData.Last
-        self.CloseDataStorage[str(currencyPair)] = self.CloseDataStorage[str(currencyPair)].fillna(method='ffill')
-        cacheData_df = pd.DataFrame()
-        if os.path.isfile(fileName):
-            cacheData_df = pd.read_csv(fileName, index_col=0,
-                                       header=None, names=["MinTradeSize", "Ask", "Bid", "Last", "Mid"],
-                                       parse_dates=True)
-        if not cacheData_df.empty:
-            with open(fileName, 'a') as f:
+    def __cache_snapshot_pair(self, currency_pair, exchange_pair_market_data, stamp_date):
+        file_name = self.__pair_cache_file_name(currency_pair, Frequency.snapshot)
+        self.close_data_storage[str(currency_pair)][-1] = exchange_pair_market_data.Last
+        self.close_data_storage[str(currency_pair)] = self.close_data_storage[str(currency_pair)].fillna(method='ffill')
+        cache_data_df = pd.DataFrame()
+        if os.path.isfile(file_name):
+            cache_data_df = pd.read_csv(file_name, index_col=0,
+                                        header=None, names=["MinTradeSize", "Ask", "Bid", "Last", "Mid"],
+                                        parse_dates=True)
+        if not cache_data_df.empty:
+            with open(file_name, 'a') as f:
                 f.writelines(
-                    [stampDate.strftime("%Y-%m-%d %H:%M:%S") + "," + exchangePairMarketData.ToString() + "\n"])
+                    [stamp_date.strftime(date_format) + "," + exchange_pair_market_data.to_string() + "\n"])
         else:
-            with open(fileName, 'w') as f:
+            with open(file_name, 'w') as f:
                 f.writelines(
-                    [stampDate.strftime("%Y-%m-%d %H:%M:%S") + "," + exchangePairMarketData.ToString() + "\n"])
+                    [stamp_date.strftime(date_format) + "," + exchange_pair_market_data.to_string() + "\n"])
 
-    def __pairCacheFileName(self, ticker, frequency):
-        return os.path.join(self.CacheFolder,self.ExchangeName, str(ticker) +"_"+frequency.value+".csv" )
+    def __pair_cache_file_name(self, ticker, frequency):
+        return os.path.join(self.cache_folder, self.exchange_name, str(ticker) + "_" + frequency.value + ".csv")
 
-    def __rebaseToRefCcy(self):
-        for ccy in sorted(self.ToRefCcy.keys()):
-            ccyPath = self.ToRefCcy[ccy]
-            self.CloseDataStorage[ccy] = 1.0
-            self.OpenDataStorage[ccy] = 1.0
-            self.HighDataStorage[ccy] = 1.0
-            self.LowDataStorage[ccy] = 1.0
-            for pair in ccyPath:
+    def __rebase_to_ref_ccy(self):
+        for ccy in sorted(self.to_reference_currency_dict.keys()):
+            ccy_path = self.to_reference_currency_dict[ccy]
+            self.close_data_storage[ccy] = 1.0
+            self.open_data_storage[ccy] = 1.0
+            self.high_data_storage[ccy] = 1.0
+            self.low_data_storage[ccy] = 1.0
+            for pair in ccy_path:
                 if pair[0] == "Long":
-                    self.CloseDataStorage[ccy] *= self.CloseDataStorage[str(pair[1])]
-                    self.OpenDataStorage[ccy] *= self.OpenDataStorage[str(pair[1])]
-                    self.HighDataStorage[ccy] *= self.HighDataStorage[str(pair[1])]
-                    self.LowDataStorage[ccy] *= self.LowDataStorage[str(pair[1])]
+                    self.close_data_storage[ccy] *= self.close_data_storage[str(pair[1])]
+                    self.open_data_storage[ccy] *= self.open_data_storage[str(pair[1])]
+                    self.high_data_storage[ccy] *= self.high_data_storage[str(pair[1])]
+                    self.low_data_storage[ccy] *= self.low_data_storage[str(pair[1])]
                 elif pair[0] == "Short":
-                    self.CloseDataStorage[ccy] *= 1.0/ self.CloseDataStorage[str(pair[1])]
-                    self.OpenDataStorage[ccy] *= 1.0 / self.OpenDataStorage[str(pair[1])]
-                    self.HighDataStorage[ccy] *= 1.0 / self.HighDataStorage[str(pair[1])]
-                    self.LowDataStorage[ccy] *= 1.0 / self.LowDataStorage[str(pair[1])]
-        for pair, pairValue in self.Markets.items():
-            marketCurrencyPrice = self.CloseDataStorage[pair.MarketCurrency]
-            self.VolumeDataStorage[str(pair)]*= marketCurrencyPrice
+                    self.close_data_storage[ccy] *= 1.0 / self.close_data_storage[str(pair[1])]
+                    self.open_data_storage[ccy] *= 1.0 / self.open_data_storage[str(pair[1])]
+                    self.high_data_storage[ccy] *= 1.0 / self.high_data_storage[str(pair[1])]
+                    self.low_data_storage[ccy] *= 1.0 / self.low_data_storage[str(pair[1])]
+        for pair, pairValue in self.markets_dict.items():
+            market_currency_price = self.close_data_storage[pair.market_currency]
+            self.volume_data_storage[str(pair)] *= market_currency_price
 
-    def __extractCurrencyList(self):
+    def __extract_currency_list(self):
         currencies = set()
-        baseCurrencies = set()
-        for pairName, pair in self.Markets.items():
-            if not pairName.BaseCurrency in currencies:
-                currencies.add(pairName.BaseCurrency)
-            if not pairName.BaseCurrency in baseCurrencies:
-                baseCurrencies.add(pairName.BaseCurrency)
-            if not pairName.MarketCurrency in currencies:
-                currencies.add(pairName.MarketCurrency)
-        return currencies, baseCurrencies
+        base_currencies = set()
+        for pairName, pair in self.markets_dict.items():
+            if pairName.base_currency not in currencies:
+                currencies.add(pairName.base_currency)
+            if pairName.base_currency not in base_currencies:
+                base_currencies.add(pairName.base_currency)
+            if pairName.market_currency not in currencies:
+                currencies.add(pairName.market_currency)
+        return currencies, base_currencies
 
-    def __toRefCurrencyDict(self):
-        retVal = dict()
-        currencies, baseCurrencies = self.__extractCurrencyList()
-        for baseCurrency in baseCurrencies:
-            ccyPair = CurrencyPair(self.RefCurrency, baseCurrency)
-            if (ccyPair in self.Markets):
-                retVal[baseCurrency] = list([("Long", ccyPair)])
-            elif (ccyPair.GetReversePair() in self.Markets):
-                retVal[baseCurrency] = list([("Short", ccyPair.GetReversePair())])
-            elif ccyPair.BaseCurrency == self.RefCurrency:
-                retVal[baseCurrency] = list([("Identity")])
+    def __to_ref_currency_dict(self):
+        ret_val = dict()
+        currencies, base_currencies = self.__extract_currency_list()
+        for base_currency in base_currencies:
+            ccy_pair = CurrencyPair(self.reference_currency, base_currency)
+            if ccy_pair in self.markets_dict:
+                ret_val[base_currency] = list([("Long", ccy_pair)])
+            elif ccy_pair.get_reverse_pair() in self.markets_dict:
+                ret_val[base_currency] = list([("Short", ccy_pair.get_reverse_pair())])
+            elif ccy_pair.base_currency == self.reference_currency:
+                ret_val[base_currency] = list(["Identity"])
         for currency in currencies:
-            for baseCurrency in baseCurrencies:
-                basePair = CurrencyPair(baseCurrency, currency)
-                if basePair in self.Markets:
-                    pivotToRef = retVal[baseCurrency][0]
-                    retVal[currency] = list([("Long", basePair)])
-                    retVal[currency].append(pivotToRef)
-        return retVal
+            for base_currency in base_currencies:
+                base_pair = CurrencyPair(base_currency, currency)
+                if base_pair in self.markets_dict:
+                    pivot_to_ref = ret_val[base_currency][0]
+                    ret_val[currency] = list([("Long", base_pair)])
+                    ret_val[currency].append(pivot_to_ref)
+        return ret_val
 
-    def __loadFromCacheOrCreateAllPossibleTransfers(self, preferredPivotCcy):
-        fileName = os.path.join(self.CacheFolder, "transfers_" + self.ExchangeName + ".json")
-        if os.path.isfile(fileName):
-            f = open(fileName, 'r')
+    def __load_from_cache_or_create_all_transfers(self, preferred_pivot_ccy):
+        file_name = os.path.join(self.cache_folder, "transfers_" + self.exchange_name + ".json")
+        if os.path.isfile(file_name):
+            f = open(file_name, 'r')
             data = f.read()
-            dataDict = json.loads(data)
-            dataDict2 = {CurrencyPair(t): [[u[0], CurrencyPair(u[1])] for u in dataDict[t]] for t in dataDict.keys()}
-            currencyPairs = dataDict2.keys()
-            extraCurrencyPairs = set(self.AllPossibleCurrencyPairs) - set(currencyPairs)
-            if (len(extraCurrencyPairs)) > 0:
-                extraTransfers =  CreateAllPossibleTransfers(extraCurrencyPairs, self.Markets, preferredPivotCcy)
-                dataDict2.update(extraTransfers)
-                self.__dumpTransfersJson(dataDict2, fileName)
-            return dataDict2
+            data_dict = json.loads(data)
+            data_dict2 = {CurrencyPair(t): [[u[0], CurrencyPair(u[1])] for u in data_dict[t]] for t in data_dict.keys()}
+            currency_pairs = data_dict2.keys()
+            extra_currency_pairs = set(self.all_possible_currency_pairs) - set(currency_pairs)
+            if (len(extra_currency_pairs)) > 0:
+                extra_transfers = create_all_possible_transfers(extra_currency_pairs, self.markets_dict, preferred_pivot_ccy)
+                data_dict2.update(extra_transfers)
+                dump_transfers_to_json(data_dict2, file_name)
+            return data_dict2
         else:
-            dataDict = CreateAllPossibleTransfers(self.AllPossibleCurrencyPairs, self.Markets, preferredPivotCcy)
-            self.__dumpTransfersJson(dataDict, fileName)
-            return dataDict
-
-    def __dumpTransfersJson(self, dataDict, fileName):
-        dataDictString = {str(t): [[u[0], str(u[1])] for u in dataDict[t]] for t in dataDict.keys()}
-        dataJson = json.dumps(dataDictString, sort_keys=True, indent=4, separators=(',', ': '))
-        f = open(fileName, 'w')
-        f.write(dataJson)
-
-
-
+            data_dict = create_all_possible_transfers(self.all_possible_currency_pairs, self.markets_dict, preferred_pivot_ccy)
+            dump_transfers_to_json(data_dict, file_name)
+            return data_dict

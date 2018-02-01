@@ -58,7 +58,7 @@ class TriangularArbitrageur:
     def __addBasePairs(self, baseCurrencies, pairsList):
         basePairs = list(map(lambda t: CurrencyPair(t[0], t[1]), it.combinations(baseCurrencies, 2)))
         for pair in basePairs:
-            revPair = pair.GetReversePair()
+            revPair = pair.get_reverse_pair()
             if pair in self.ExchangeData:
                 pairsList.append(pair)
             elif revPair in self.ExchangeData:
@@ -98,7 +98,7 @@ class TriangularPair:
         self.CurrencyPairs.add(currencyPair3)
         self.MarketCurrencies = set([t.MarketCurrency for t in self.CurrencyPairs])
         self.BaseCurrencies = set([t.BaseCurrency for t in self.CurrencyPairs])
-        self.ReversePairs = set([t.GetReversePair() for t in self.CurrencyPairs])
+        self.ReversePairs = set([t.get_reverse_pair() for t in self.CurrencyPairs])
         self.Currencies = self.MarketCurrencies | self.BaseCurrencies
 
     def __key(self):
@@ -129,7 +129,7 @@ class TriangularPair:
         if pair in marketData:
             buySell = BuySell.Buy
         else:
-            pair = pair.GetReversePair()
+            pair = pair.get_reverse_pair()
             buySell = BuySell.Sell
         return pair, buySell
 
@@ -144,9 +144,9 @@ class Triangle:
         self.BuySell3 = buySell3
 
     def __str__(self):
-        a = str(self.Pair1) if self.BuySell1 == BuySell.Buy else str(self.Pair1.GetReversePair())
-        b = str(self.Pair2) if self.BuySell2 == BuySell.Buy else str(self.Pair2.GetReversePair())
-        c = str(self.Pair3) if self.BuySell3 == BuySell.Buy else str(self.Pair3.GetReversePair())
+        a = str(self.Pair1) if self.BuySell1 == BuySell.Buy else str(self.Pair1.get_reverse_pair())
+        b = str(self.Pair2) if self.BuySell2 == BuySell.Buy else str(self.Pair2.get_reverse_pair())
+        c = str(self.Pair3) if self.BuySell3 == BuySell.Buy else str(self.Pair3.get_reverse_pair())
         return "=>".join([a,b,c])
 
 

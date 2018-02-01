@@ -9,13 +9,13 @@ class BuyAndHold:
 
     def Update(self, date):
         if self.State == "NoPosition":
-            balance = self.Book.GetBalance()
+            balance = self.Book.get_balance()
             for ccy, qty in balance.items():
-                self.Book.Buy(ccy, qty, self.Currency, self.DataProvider)
+                self.Book.buy(ccy, qty, self.Currency, self.DataProvider)
             self.State = "Holding"
-            return self.Book.ComputeMtM(self.DataProvider)
+            return self.Book.compute_mtm(self.DataProvider)
         elif self.State =="Holding":
-            return self.Book.ComputeMtM(self.DataProvider)
+            return self.Book.compute_mtm(self.DataProvider)
 
 
 
